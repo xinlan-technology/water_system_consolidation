@@ -103,11 +103,10 @@ def process_water_service_areas(shapefile_path, output_csv_path):
 # Main execution
 if __name__ == "__main__":
     # Define file paths
-    shapefile_path = "/Users/xinlan/Library/CloudStorage/OneDrive-MichiganStateUniversity/Codes/Water System Consolidation/Input Data/cws_shape_file/service_areas.shp"
+    shapefile_path = "Input Data/cws_shape_file/service_areas.shp"
     
     # Set output directory and file path
-    output_directory = "/Users/xinlan/Library/CloudStorage/OneDrive-MichiganStateUniversity/Codes/Water System Consolidation/Output Data"
-    output_csv_path = f"{output_directory}/location.csv"
+    output_csv_path = "Output Data/location.csv"
     
     # Process the data
     try:
