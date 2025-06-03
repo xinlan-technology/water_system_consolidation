@@ -186,9 +186,9 @@ def create_population_variation_map(data, save_path=None):
     
     # Define colors and sizes for population variation
     variation_config = {
-        "Population increase": {"color": "#3B82F6", "size": 24, "alpha": 0.8, "edge": "#1D4ED8"},       # 蓝色
-        "Population unchanged": {"color": "#22C55E", "size": 20, "alpha": 0.7, "edge": "#15803D"},      # 绿色
-        "Population decrease": {"color": "#EF4444", "size": 28, "alpha": 0.8, "edge": "#991B1B"}       # 红色
+        "Population increase": {"color": "#3B82F6", "size": 24, "alpha": 0.8, "edge": "#1D4ED8"},       
+        "Population unchanged": {"color": "#22C55E", "size": 20, "alpha": 0.7, "edge": "#15803D"},      
+        "Population decrease": {"color": "#EF4444", "size": 28, "alpha": 0.8, "edge": "#991B1B"} 
     }
     
     # Plot points in order (increase first, then unchange, then decrease)
