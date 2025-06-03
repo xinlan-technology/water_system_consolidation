@@ -1,14 +1,58 @@
 # California Water System Data Processing Script
-# Integrates population, geographic location, water source types, and violation records data 
+# Integrates population, geographic location, water source types, violation records, and HR2W data 
 # for California public water systems to generate a unified analytical dataset
 
 import pandas as pd
 import numpy as np
 
+def load_hr2w_data(input_folder):
+    """
+    Load and process HR2W (Human Right to Water) data
+    
+    Args:
+        input_folder (str): Path to input data folder
+        
+    Returns:
+        pandas.DataFrame or None: Processed HR2W data
+    """
+    hr2w_file = f'{input_folder}HR2W_2022_12.csv'
+    
+    try:
+        # Read HR2W data with encoding handling
+        try:
+            hr2w = pd.read_csv(hr2w_file, encoding='utf-8')
+        except UnicodeDecodeError:
+            hr2w = pd.read_csv(hr2w_file, encoding='latin-1')
+        
+        # Select only the needed columns
+        hr2w_list = hr2w[["PWSID", "SAFER STATUS"]].copy()
+        
+        # Rename to standardize (convert space to dot for consistency)
+        hr2w_list.columns = ['PWS.ID', 'SAFER.STATUS']
+        
+        # Ensure PWS.ID is string for consistent merging
+        hr2w_list['PWS.ID'] = hr2w_list['PWS.ID'].astype(str)
+        
+        print(f"Loaded {len(hr2w_list)} HR2W records")
+        print(f"SAFER STATUS distribution:")
+        print(hr2w_list['SAFER.STATUS'].value_counts())
+        
+        return hr2w_list
+        
+    except FileNotFoundError:
+        print(f"Warning: Could not find HR2W file {hr2w_file}")
+        print("HR2W data will be skipped - systems will have null SAFER.STATUS")
+        return None
+    
+    except Exception as e:
+        print(f"Error loading HR2W data: {str(e)}")
+        print("HR2W data will be skipped - systems will have null SAFER.STATUS")
+        return None
+
 def process_california_water_systems():
     """
     Process California public water system data by integrating multiple data sources
-    including population trends, violations, and geographic information.
+    including population trends, violations, geographic information, and HR2W status.
     
     Returns:
         pandas.DataFrame: Processed dataset containing comprehensive water system information
@@ -46,6 +90,10 @@ def process_california_water_systems():
         Location = pd.read_csv(f'{output_folder}location.csv', encoding='utf-8')
     except UnicodeDecodeError:
         Location = pd.read_csv(f'{output_folder}location.csv', encoding='latin-1')
+    
+    # Load HR2W data
+    print("Loading HR2W data...")
+    hr2w_data = load_hr2w_data(input_folder)
     
     # Create data frame with PWSID and primary source information
     print("Processing water system details...")
@@ -200,6 +248,21 @@ def process_california_water_systems():
     CWS['Freq'] = CWS['Freq'].fillna(0)
     CWS.rename(columns={'Freq': 'Monitoring.and.reporting.violation'}, inplace=True)
     
+    # Add HR2W data to CWS
+    print("Integrating HR2W data...")
+    if hr2w_data is not None:
+        # Merge with HR2W data (left join to keep all CWS records)
+        before_hr2w_count = len(CWS)
+        CWS = CWS.merge(hr2w_data, on='PWS.ID', how='left')
+        print(f"After HR2W merge: {len(CWS)} records (should be same as before: {before_hr2w_count})")
+        print(f"Systems with HR2W status: {len(CWS[CWS['SAFER.STATUS'].notna()])}")
+        print("HR2W status distribution in final dataset:")
+        print(CWS['SAFER.STATUS'].value_counts(dropna=False))
+    else:
+        # If HR2W data couldn't be loaded, add empty column
+        CWS['SAFER.STATUS'] = pd.NA
+        print("HR2W column added with null values")
+    
     # Write CSV file to Output Data directory
     print("Saving processed data...")
     CWS.to_csv(f"{output_folder}CWS_CA.csv", index=False)
@@ -215,6 +278,13 @@ if __name__ == "__main__":
         print(f"Dataset includes the following columns: {list(processed_data.columns)}")
         print("\nSample of processed data:")
         print(processed_data.head())
+        
+        # Show HR2W integration summary
+        if 'SAFER.STATUS' in processed_data.columns:
+            print(f"\nHR2W Integration Summary:")
+            print(f"Total systems: {len(processed_data)}")
+            print(f"Systems with HR2W status: {len(processed_data[processed_data['SAFER.STATUS'].notna()])}")
+            print(f"Systems without HR2W status: {len(processed_data[processed_data['SAFER.STATUS'].isna()])}")
         
     except FileNotFoundError as e:
         print(f"Error: Required data file not found - {str(e)}")

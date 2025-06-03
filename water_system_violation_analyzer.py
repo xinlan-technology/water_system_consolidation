@@ -1,5 +1,6 @@
 # California Water System Violation Analysis Script
 # Generates comprehensive statistics on drinking water violations by system size
+# Needs to read one file: CWS_CA.csv
 
 import pandas as pd
 import numpy as np
@@ -87,57 +88,26 @@ def calculate_violation_statistics(df):
     
     # 4. HR2W (Human Right to Water) status counts by size
     if 'SAFER.STATUS' in df.columns:
-        hr2w_counts = {}
-        hr2w_statuses = ['Failing', 'At-Risk', 'Potentially At-Risk', 'Not At-Risk', 'Not Assessed']
+        # Only process if there's actual HR2W data (not all null)
+        hr2w_data_exists = df['SAFER.STATUS'].notna().any()
         
-        for status in hr2w_statuses:
-            status_by_size = df[df['SAFER.STATUS'] == status].groupby('Size').size().to_dict()
-            hr2w_counts[status.lower().replace(' ', ' ')] = status_by_size
+        if hr2w_data_exists:
+            hr2w_counts = {}
+            hr2w_statuses = ['Failing', 'At-Risk', 'Potentially At-Risk', 'Not At-Risk', 'Not Assessed']
             
-            # Overall count
-            hr2w_counts[f'{status.lower().replace(" ", " ")}_overall'] = len(df[df['SAFER.STATUS'] == status])
-        
-        results['hr2w_counts'] = hr2w_counts
+            for status in hr2w_statuses:
+                status_by_size = df[df['SAFER.STATUS'] == status].groupby('Size').size().to_dict()
+                hr2w_counts[status.lower().replace(' ', ' ')] = status_by_size
+                
+                # Overall count
+                hr2w_counts[f'{status.lower().replace(" ", " ")}_overall'] = len(df[df['SAFER.STATUS'] == status])
+            
+            results['hr2w_counts'] = hr2w_counts
+            print(f"HR2W data available: {len(df[df['SAFER.STATUS'].notna()])} systems with status")
+        else:
+            print("HR2W column exists but no data available (all null values)")
     
     return results
-
-def load_hr2w_data(hr2w_file='Input Data/HR2W_2022_12.csv'):
-    """
-    Load and process HR2W (Human Right to Water) data
-    
-    Args:
-        hr2w_file (str): Path to HR2W list file
-        
-    Returns:
-        pandas.DataFrame: Processed HR2W data
-    """
-    try:
-        # Read HR2W data
-        hr2w = pd.read_csv(hr2w_file)
-        
-        # Select only the needed columns
-        hr2w_list = hr2w[["PWSID", "SAFER STATUS"]].copy()
-        
-        # Rename to standardize (convert space to dot for consistency with rest of code)
-        hr2w_list.columns = ['PWSID', 'SAFER.STATUS']
-        
-        # Ensure PWSID is string for consistent merging
-        hr2w_list['PWSID'] = hr2w_list['PWSID'].astype(str)
-        
-        print(f"Loaded {len(hr2w_list)} HR2W records")
-        print(f"SAFER STATUS distribution:")
-        print(hr2w_list['SAFER.STATUS'].value_counts())
-        
-        return hr2w_list
-        
-    except FileNotFoundError:
-        print(f"Warning: Could not find HR2W file {hr2w_file}")
-        print("HR2W analysis will be skipped")
-        return None
-    
-    except Exception as e:
-        print(f"Error loading HR2W data: {str(e)}")
-        return None
 
 def generate_summary_table(df):
     """
@@ -152,7 +122,7 @@ def generate_summary_table(df):
     
     stats = calculate_violation_statistics(df)
     
-    # Define the size order to match R output
+    # Define the size order
     size_order = ['0-500', '501-3300', '3301-10000', '10001-100000', '>100000']
     
     # Create the summary table
@@ -221,37 +191,41 @@ def generate_summary_table(df):
     
     return summary_table
 
-def analyze_water_system_violations(input_file='Output Data/CWS_CA.csv', hr2w_file='Input Data/HR2W_2022_12.csv'):
+def analyze_water_system_violations(input_file='Output Data/CWS_CA.csv'):
     """
     Analyze water system violations and display summary table
+    Now simplified to only read one input file that contains all integrated data
     
     Args:
-        input_file (str): Path to the processed water system data
-        hr2w_file (str): Path to the HR2W list file
+        input_file (str): Path to the processed water system data (with HR2W already integrated)
         
     Returns:
-        pandas.DataFrame: Summary table for display only
+        pandas.DataFrame: Summary table for display
     """
     
-    print("Loading water system data...")
+    print("Loading integrated water system data...")
     
     try:
         # Read the processed CWS data
         df = pd.read_csv(input_file)
         print(f"Loaded {len(df)} water system records")
         
-        # Load and merge HR2W data
-        hr2w_data = load_hr2w_data(hr2w_file)
-        if hr2w_data is not None:
-            # Ensure PWS.ID is string for consistent merging
-            df['PWS.ID'] = df['PWS.ID'].astype(str)
-            
-            # Merge with HR2W data (left join to keep all CWS records)
-            df = df.merge(hr2w_data, left_on='PWS.ID', right_on='PWSID', how='left')
-            print(f"Merged with HR2W data: {len(df[df['SAFER.STATUS'].notna()])} systems have HR2W status")
+        # Check what data is available
+        print("\nDataset summary:")
+        print(f"Columns available: {list(df.columns)}")
+        
+        # Check HR2W data availability
+        if 'SAFER.STATUS' in df.columns:
+            hr2w_available = df['SAFER.STATUS'].notna().sum()
+            print(f"HR2W data: {hr2w_available} systems with SAFER status out of {len(df)} total")
+            if hr2w_available > 0:
+                print("SAFER STATUS distribution:")
+                print(df['SAFER.STATUS'].value_counts(dropna=False))
+        else:
+            print("No HR2W data found in dataset")
         
         # Generate comprehensive analysis
-        print("Calculating violation statistics...")
+        print("\nCalculating violation statistics...")
         detailed_stats = calculate_violation_statistics(df)
         
         # Create formatted summary table
@@ -259,25 +233,35 @@ def analyze_water_system_violations(input_file='Output Data/CWS_CA.csv', hr2w_fi
         summary_table = generate_summary_table(df)
         
         # Display summary
-        print("\n" + "="*60)
-        print("SUMMARY TABLE")
-        print("="*60)
+        print("\n" + "="*70)
+        print("CALIFORNIA WATER SYSTEMS VIOLATION ANALYSIS SUMMARY")
+        print("="*70)
         print(summary_table.to_string(index=False))
-        print("="*60)
+        print("="*70)
         
         return summary_table
         
     except FileNotFoundError:
         print(f"Error: Could not find input file {input_file}")
+        print("Please make sure to run the data processing script first to generate CWS_CA.csv")
         return None
     
     except Exception as e:
         print(f"Error during analysis: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return None
 
 if __name__ == "__main__":
     # Run the simplified analysis
+    print("Starting California Water System Violation Analysis...")
+    print("This script now only reads one file: CWS_CA.csv (with integrated HR2W data)")
+    print("-" * 70)
+    
     summary_table = analyze_water_system_violations()
     
     if summary_table is not None:
-        print("\n✓ Analysis completed!")
+        print("\n✓ Analysis completed successfully!")
+        print(f"Summary table has {len(summary_table)} rows and {len(summary_table.columns)} columns")
+    else:
+        print("\n✗ Analysis failed - please check error messages above")
