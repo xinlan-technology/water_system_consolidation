@@ -145,17 +145,12 @@ print("Creating PWSID distance matrix...")
 # Get PWSID list
 pwsids = CWS_Location["PWS.ID"].tolist()
 
-# Create DataFrame with PWSID as index and columns
-distance_df = pd.DataFrame(
-    distance_matrix_km,
-    index=pwsids,
-    columns=pwsids
-)
+# Save distance matrix as compressed numpy array
+print("Saving distance matrix...")
+np.savez_compressed("Output Data/PWSID_Distance_Matrix_km.npz", 
+                   distance_matrix=distance_matrix_km, 
+                   pwsids=pwsids)
 
-# Save the distance matrix
-output_file = "Output Data/PWSID_Distance_Matrix_km.csv"
-distance_df.to_csv(output_file)
-
-print(f"PWSID distance matrix saved to: {output_file}")
-print(f"Matrix dimensions: {distance_df.shape[0]} systems × {distance_df.shape[1]} systems")
+print(f"Compressed distance matrix saved to: Output Data/PWSID_Distance_Matrix_km.npz")
+print(f"Matrix dimensions: {distance_matrix_km.shape[0]} systems × {distance_matrix_km.shape[1]} systems")
 print("Computation completed successfully!")
