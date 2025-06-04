@@ -33,14 +33,26 @@ G_ig.add_vertices(len(nx_nodes))
 # Build edges with weights
 edges = []
 weights = []
+skipped_count = 0
 
+# Convert NetworkX edges to iGraph edges with proper weight handling
 for u, v, data in tqdm(G_nx.edges(data=True), desc="Converting edges"):
     length = data.get("length")
-    if length is not None and length > 0:
-        idx_u = nx_node_to_idx[u]
-        idx_v = nx_node_to_idx[v]
-        edges.append((idx_u, idx_v))
-        weights.append(length)
+    if length is not None:
+        try:
+            length = float(length)
+            if length > 0:
+                idx_u = nx_node_to_idx[u]
+                idx_v = nx_node_to_idx[v]
+                edges.append((idx_u, idx_v))
+                weights.append(length)
+        except (ValueError, TypeError):
+            skipped_count += 1
+            continue  # Skip edges with invalid length data
+
+# Print number of skipped edges
+if skipped_count > 0:
+    print(f"Skipped {skipped_count} edges with invalid length data")
 
 # Add edges to iGraph
 G_ig.add_edges(edges)
@@ -60,7 +72,31 @@ longitudes = CWS_Location["Longitude"].values
 
 # Extract road network coordinates
 node_ids = list(G_nx.nodes)
-node_coords = np.array([(G_nx.nodes[node]["y"], G_nx.nodes[node]["x"]) for node in node_ids])
+node_coords = []
+failed_count = 0
+
+# Process node coordinates
+print("Processing node coordinates...")
+for i, node in enumerate(node_ids):
+    try:
+        node_data = G_nx.nodes[node]
+        y = float(node_data["y"])  # latitude
+        x = float(node_data["x"])  # longitude
+        node_coords.append((y, x))
+    except (ValueError, TypeError, KeyError) as e:
+        failed_count += 1
+        if failed_count <= 5:  # Only print first 5 errors
+            print(f"Failed to convert coordinates for node {node}: {e}")
+            print(f"Node data: {G_nx.nodes[node]}")
+        node_coords.append((0.0, 0.0))
+
+# Print number of failed coordinate conversions
+if failed_count > 0:
+    print(f"Total failed coordinate conversions: {failed_count}")
+
+# Convert to numpy array
+node_coords = np.array(node_coords)
+print(f"Processed {len(node_coords)} node coordinates")
 
 # Convert to radians for haversine distance
 system_coords_rad = np.radians(np.column_stack((latitudes, longitudes)))
@@ -107,7 +143,7 @@ print(f"Average distance: {np.mean(distance_matrix_km[distance_matrix_km > 0]):.
 print("Creating PWSID distance matrix...")
 
 # Get PWSID list
-pwsids = CWS_Location["PWSID"].tolist()
+pwsids = CWS_Location["PWS.ID"].tolist()
 
 # Create DataFrame with PWSID as index and columns
 distance_df = pd.DataFrame(
