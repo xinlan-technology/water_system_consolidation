@@ -37,7 +37,7 @@ def find_optimal_k_for_threshold(lookup_df, threshold_km):
     if len(valid_k) == 0:
         return len(lookup_df)  # If no valid k found, use all systems as separate clusters
     else:
-        return valid_k['k'].max()
+        return valid_k['k'].min()
 
 def prepare_clustering_features(cws_data):
     """Prepare features for clustering"""
@@ -158,12 +158,20 @@ def main():
     
     print(f"\nLoaded data for {len(cws_ca)} water systems")
     
-    # Determine threshold range
-    max_distance = lookup_df['max_intra_cluster_distance_km'].max()
-    max_threshold = int(np.ceil(max_distance))
-    threshold_range = list(range(0, max_threshold + 1))
+    # Calculate nearest neighbor distances to determine the threshold range
+    print("Calculating nearest neighbor distances for threshold range...")
+    dist_matrix = distance_matrix.copy()
+    np.fill_diagonal(dist_matrix, np.inf)  # Exclude self-distances
+    nearest_distances_km = np.min(dist_matrix, axis=1)
+    max_meaningful_distance = int(np.ceil(nearest_distances_km.max()))
     
-    print(f"Running sensitivity analysis from 0 km to {max_threshold} km...")
+    print(f"Maximum nearest neighbor distance: {max_meaningful_distance} km")
+    print(f"This ensures all systems can be consolidated at the maximum threshold")
+    
+    # Determine threshold range based on nearest neighbor distances
+    threshold_range = list(range(0, max_meaningful_distance + 1))
+    
+    print(f"Running sensitivity analysis from 0 km to {max_meaningful_distance} km...")
     print(f"Number of thresholds to test: {len(threshold_range)}")
     
     # Run analysis
