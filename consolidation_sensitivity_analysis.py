@@ -10,7 +10,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 def load_data():
-    """Load all required data"""
+    """Load all required data and ensure proper index alignment"""
     try:
         print("Loading CWS data...")
         cws_ca = pd.read_csv('Output Data/CWS_CA.csv')
@@ -23,64 +23,73 @@ def load_data():
         print("Loading clustering lookup table...")
         lookup_df = pd.read_csv('Output Data/Clustering_Lookup_Table.csv')
         
-        print("All data loaded successfully!")
-        return cws_ca, distance_matrix_km, pwsids, lookup_df
+        # Align CWS data with distance matrix order
+        print("Aligning CWS data with distance matrix...")
+        cws_aligned = []
+        missing_count = 0
+        
+        for pwsid in pwsids:
+            matching_row = cws_ca[cws_ca['PWS.ID'] == pwsid]
+            if len(matching_row) > 0:
+                cws_aligned.append(matching_row.iloc[0])
+            else:
+                missing_count += 1
+        
+        if missing_count > 0:
+            print(f"Warning: {missing_count} PWS IDs in distance matrix not found in CWS data")
+        
+        cws_ca_aligned = pd.DataFrame(cws_aligned).reset_index(drop=True)
+        print(f"Successfully aligned {len(cws_ca_aligned)} systems")
+        
+        print("All data loaded and aligned successfully!")
+        return cws_ca_aligned, distance_matrix_km, lookup_df
         
     except FileNotFoundError as e:
         print(f"Error loading data: {e}")
-        return None, None, None, None
+        return None, None, None
 
 def find_optimal_k_for_threshold(lookup_df, threshold_km):
     """Find optimal k for a given distance threshold using lookup table"""
     valid_k = lookup_df[lookup_df['max_intra_cluster_distance_km'] <= threshold_km]
-    
-    if len(valid_k) == 0:
-        return len(lookup_df)  # If no valid k found, use all systems as separate clusters
-    else:
-        return valid_k['k'].min()
-
-def prepare_clustering_features(cws_data):
-    """Prepare features for clustering"""
-    cws = cws_data[['Longitude', 'Latitude', 'Population.2021', 'Health.violation', 
-                   'Monitoring.and.reporting.violation', 'PWS.ID']].copy()
-    
-    features = ['Longitude', 'Latitude', 'Population.2021', 'Health.violation', 
-               'Monitoring.and.reporting.violation']
-    features_df = cws[features]
-    
-    return cws, features_df
+    return valid_k['k'].min() if len(valid_k) > 0 else len(lookup_df)
 
 def analyze_consolidation_at_threshold(cws_data, distance_matrix, lookup_df, threshold_km):
     """Analyze consolidation for a specific distance threshold"""
     
     distance_threshold_meters = threshold_km * 1000
     
-    # Prepare data and features
-    cws, features_df = prepare_clustering_features(cws_data)
+    # Prepare features for clustering
+    features = ['Longitude', 'Latitude', 'Population.2021', 'Health.violation', 
+               'Monitoring.and.reporting.violation']
     
     # Step 1: Initial clustering using all features
     optimal_k = find_optimal_k_for_threshold(lookup_df, threshold_km)
     scaler = StandardScaler()
-    cws_scaled = scaler.fit_transform(features_df)
+    cws_scaled = scaler.fit_transform(cws_data[features])
     linkage_matrix = linkage(cws_scaled, method='complete')
     cluster_labels = cut_tree(linkage_matrix, n_clusters=optimal_k).flatten()
-    cws['Cluster'] = cluster_labels
+    
+    cws_work = cws_data.copy()
+    cws_work['Cluster'] = cluster_labels
     
     # Step 2: Identify Joint Mergers
-    cluster_sizes = cws.groupby('Cluster').size().reset_index(name='Size')
+    cluster_sizes = cws_work.groupby('Cluster').size().reset_index(name='Size')
     joint_merger_clusters = cluster_sizes[cluster_sizes['Size'] > 1]['Cluster'].values
-    cws_jm = cws[cws['Cluster'].isin(joint_merger_clusters)].copy()
+    cws_jm = cws_work[cws_work['Cluster'].isin(joint_merger_clusters)].copy()
     cws_jm['Consolidation_Type'] = 'Joint_Merger'
     
     # Step 3: Geographic clustering for single systems
     single_clusters = cluster_sizes[cluster_sizes['Size'] == 1]['Cluster'].values
-    cws_single = cws[cws['Cluster'].isin(single_clusters)].copy()
+    cws_single = cws_work[cws_work['Cluster'].isin(single_clusters)].copy()
     
     consolidation_results = []
     
     if len(cws_single) > 0:
+        # Use clean indices for distance matrix access
         single_indices = cws_single.index.values
-        geo_distances = distance_matrix[np.ix_(single_indices, single_indices)] * 1000  # Convert to meters
+        
+        # Extract distance submatrix for single systems
+        geo_distances = distance_matrix[np.ix_(single_indices, single_indices)] * 1000
         geo_distances_condensed = squareform(geo_distances, checks=False)
         geo_linkage = linkage(geo_distances_condensed, method='complete')
         geo_clusters = cut_tree(geo_linkage, height=distance_threshold_meters).flatten()
@@ -101,12 +110,10 @@ def analyze_consolidation_at_threshold(cws_data, distance_matrix, lookup_df, thr
                 largest = populations[0]
                 second_largest = populations[1] if len(populations) > 1 else populations[0]
                 
-                if largest > 0:
-                    percentage = second_largest / largest
-                else:
-                    percentage = 1.0
+                # Calculate ratio and determine consolidation type
+                ratio = second_largest / largest if largest > 0 else 1.0
                 
-                if percentage <= 0.1:
+                if ratio <= 0.1:
                     cluster_data['Consolidation_Type'] = 'Direct_Acquisition'
                 else:
                     cluster_data['Consolidation_Type'] = 'Balanced_Merger'
@@ -129,7 +136,7 @@ def analyze_consolidation_at_threshold(cws_data, distance_matrix, lookup_df, thr
         none = counts.get('No_Consolidation', 0)
     else:
         joint = balanced = direct = 0
-        none = len(result)
+        none = len(result) if len(result) > 0 else len(cws_data)
     
     return {
         'Distance_km': threshold_km,
@@ -143,20 +150,20 @@ def analyze_consolidation_at_threshold(cws_data, distance_matrix, lookup_df, thr
 def main():
     """Main function for sensitivity analysis"""
     
-    # Load data
-    cws_ca, distance_matrix, pwsids, lookup_df = load_data()
+    # Load data with proper alignment
+    cws_ca, distance_matrix, lookup_df = load_data()
     if cws_ca is None:
         return
     
-    # Check required columns
-    required_cols = ['PWS.ID', 'Longitude', 'Latitude', 'Population.2021', 'Health.violation', 
-                    'Monitoring.and.reporting.violation']
-    missing_cols = [col for col in required_cols if col not in cws_ca.columns]
-    if missing_cols:
-        print(f"Error: Missing required columns: {missing_cols}")
-        return
+    print(f"\nLoaded and aligned data for {len(cws_ca)} water systems")
+    print(f"Distance matrix shape: {distance_matrix.shape}")
     
-    print(f"\nLoaded data for {len(cws_ca)} water systems")
+    # Verify perfect alignment
+    if len(cws_ca) == distance_matrix.shape[0] == distance_matrix.shape[1]:
+        print("Perfect alignment verified")
+    else:
+        print("Dimension mismatch detected!")
+        return
     
     # Calculate nearest neighbor distances to determine the threshold range
     print("Calculating nearest neighbor distances for threshold range...")
@@ -166,7 +173,6 @@ def main():
     max_meaningful_distance = int(np.ceil(nearest_distances_km.max()))
     
     print(f"Maximum nearest neighbor distance: {max_meaningful_distance} km")
-    print(f"This ensures all systems can be consolidated at the maximum threshold")
     
     # Determine threshold range based on nearest neighbor distances
     threshold_range = list(range(0, max_meaningful_distance + 1))

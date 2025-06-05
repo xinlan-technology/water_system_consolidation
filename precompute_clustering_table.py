@@ -9,7 +9,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 def load_data():
-    """Load CWS data and distance matrix"""
+    """Load CWS data and distance matrix with proper alignment"""
     try:
         print("Loading CWS data...")
         cws_ca = pd.read_csv('Output Data/CWS_CA.csv')
@@ -21,7 +21,25 @@ def load_data():
         pwsids = data['pwsids']
         print(f"Loaded distance matrix: {distance_matrix_km.shape[0]} × {distance_matrix_km.shape[1]} systems")
         
-        return cws_ca, distance_matrix_km, pwsids
+        # Align CWS data with distance matrix order
+        print("Aligning CWS data with distance matrix...")
+        cws_aligned = []
+        missing_count = 0
+        
+        for pwsid in pwsids:
+            matching_row = cws_ca[cws_ca['PWS.ID'] == pwsid]
+            if len(matching_row) > 0:
+                cws_aligned.append(matching_row.iloc[0])
+            else:
+                missing_count += 1
+        
+        if missing_count > 0:
+            print(f"Warning: {missing_count} PWS IDs in distance matrix not found in CWS data")
+        
+        cws_ca_aligned = pd.DataFrame(cws_aligned).reset_index(drop=True)
+        print(f"Successfully aligned {len(cws_ca_aligned)} systems")
+        
+        return cws_ca_aligned, distance_matrix_km, pwsids
     except FileNotFoundError as e:
         print(f"Error loading data: {e}")
         return None, None, None
@@ -38,39 +56,30 @@ def get_max_distance_in_cluster(cluster_indices, distance_matrix):
             dist = distance_matrix[idx1, idx2]
             max_dist = max(max_dist, dist)
     
-    return max_dist  # Keep in km
-
-def prepare_clustering_features(cws_data):
-    """Prepare features for clustering"""
-    # Select and prepare data
-    cws = cws_data[['Longitude', 'Latitude', 'Population.2021', 'Health.violation', 
-                   'Monitoring.and.reporting.violation', 'PWS.ID']].copy()
-    
-    features = ['Longitude', 'Latitude', 'Population.2021', 'Health.violation', 
-               'Monitoring.and.reporting.violation']
-    features_df = cws[features]
-    
-    return cws, features_df
+    return max_dist
 
 def create_clustering_lookup_table(cws_data, distance_matrix):
     """Create lookup table for k vs max intra-cluster distance"""
     
-    print("\nPreparing clustering features...")
-    cws, features_df = prepare_clustering_features(cws_data)
+    # Prepare features for clustering
+    features = ['Longitude', 'Latitude', 'Population.2021', 'Health.violation', 
+               'Monitoring.and.reporting.violation']
+    
+    print(f"\nUsing {len(cws_data)} systems for clustering")
     
     # Standardize data
     print("Standardizing features...")
     scaler = StandardScaler()
-    cws_scaled = scaler.fit_transform(features_df)
+    cws_scaled = scaler.fit_transform(cws_data[features])
     
     # Perform hierarchical clustering
-    print("Performing hierarchical clustering ...")
+    print("Performing hierarchical clustering...")
     linkage_matrix = linkage(cws_scaled, method='complete')
     print("Clustering completed!")
     
     # Create lookup table
     print("Creating lookup table...")
-    n_systems = len(cws)
+    n_systems = len(cws_data)
     lookup_table = []
     
     for k in range(1, n_systems + 1):
@@ -101,20 +110,20 @@ def create_clustering_lookup_table(cws_data, distance_matrix):
 def main():
     """Main function to create clustering lookup table"""
     
-    # Load data
+    # Load data with proper alignment
     cws_data, distance_matrix, pwsids = load_data()
     if cws_data is None:
         return
     
-    # Check required columns
-    required_cols = ['PWS.ID', 'Longitude', 'Latitude', 'Population.2021', 'Health.violation', 
-                    'Monitoring.and.reporting.violation']
-    missing_cols = [col for col in required_cols if col not in cws_data.columns]
-    if missing_cols:
-        print(f"Error: Missing required columns: {missing_cols}")
-        return
+    print(f"\nStarting clustering lookup table creation for {len(cws_data)} aligned systems...")
+    print(f"Distance matrix shape: {distance_matrix.shape}")
     
-    print(f"\nStarting clustering lookup table creation for {len(cws_data)} systems...")
+    # Verify perfect alignment
+    if len(cws_data) == distance_matrix.shape[0] == distance_matrix.shape[1]:
+        print("Perfect alignment: CWS data and distance matrix dimensions match")
+    else:
+        print("Dimension mismatch detected!")
+        return
     
     # Create lookup table
     lookup_df = create_clustering_lookup_table(cws_data, distance_matrix)
@@ -123,8 +132,8 @@ def main():
     lookup_filename = 'Output Data/Clustering_Lookup_Table.csv'
     lookup_df.to_csv(lookup_filename, index=False)
     print(f"\nLookup table saved to: {lookup_filename}")
-    print(f"Lookup table creation completed successfully!")
     
+    print(f"Lookup table creation completed successfully!")
     return lookup_df
 
 if __name__ == "__main__":
