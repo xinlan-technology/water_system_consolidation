@@ -43,7 +43,7 @@ def load_hr2w_data(input_folder):
         print(f"Warning: Could not find HR2W file {hr2w_file}")
         print("HR2W data will be skipped - systems will have null SAFER.STATUS")
         return None
-    
+        
     except Exception as e:
         print(f"Error loading HR2W data: {str(e)}")
         print("HR2W data will be skipped - systems will have null SAFER.STATUS")
@@ -256,6 +256,18 @@ def process_california_water_systems():
         CWS = CWS.merge(hr2w_data, on='PWS.ID', how='left')
         print(f"After HR2W merge: {len(CWS)} records (should be same as before: {before_hr2w_count})")
         print(f"Systems with HR2W status: {len(CWS[CWS['SAFER.STATUS'].notna()])}")
+
+        # Handle any remaining NaN values from merge (systems not found in HR2W data)
+        na_count_after_merge = CWS['SAFER.STATUS'].isna().sum()
+        if na_count_after_merge > 0:
+            print(f"Found {na_count_after_merge} systems without SAFER.STATUS after merge")
+            # Find which PWS.ID didn't match
+            missing_ids = CWS[CWS['SAFER.STATUS'].isna()]['PWS.ID'].tolist()
+            print(f"PWS.IDs without SAFER.STATUS: {missing_ids}")
+            # Replace NaN with 'Not Assessed'
+            CWS['SAFER.STATUS'] = CWS['SAFER.STATUS'].fillna('Not Assessed')
+            print(f"Replaced {na_count_after_merge} missing SAFER.STATUS values with 'Not Assessed'")
+
         print("HR2W status distribution in final dataset:")
         print(CWS['SAFER.STATUS'].value_counts(dropna=False))
     else:
