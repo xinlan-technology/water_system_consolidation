@@ -1,5 +1,6 @@
-# Script for sensitivity analysis of water system consolidation thresholds
-# Creates a simple table showing consolidation types across different distance thresholds
+# This script is used to analyze the consolidation of water systems across different distance thresholds
+# Water system consolidation sensitivity analysis across distance thresholds
+# Analyzes consolidation types and characteristics (health violations, monitoring violations, population decline, SAFER status) across different distance thresholds
 
 import pandas as pd
 import numpy as np
@@ -10,7 +11,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 def load_data():
-    """Load all required data and ensure proper index alignment"""
+    """Load all required data"""
     try:
         print("Loading CWS data...")
         cws_ca = pd.read_csv('Output Data/CWS_CA.csv')
@@ -18,31 +19,15 @@ def load_data():
         print("Loading distance matrix...")
         data = np.load('Output Data/PWSID_Distance_Matrix_km.npz')
         distance_matrix_km = data['distance_matrix']
-        pwsids = data['pwsids']
         
         print("Loading clustering lookup table...")
         lookup_df = pd.read_csv('Output Data/Clustering_Lookup_Table.csv')
         
-        # Align CWS data with distance matrix order
-        print("Aligning CWS data with distance matrix...")
-        cws_aligned = []
-        missing_count = 0
+        print(f"Loaded {len(cws_ca)} water systems")
+        print(f"Distance matrix shape: {distance_matrix_km.shape}")
+        print("All data loaded successfully!")
         
-        for pwsid in pwsids:
-            matching_row = cws_ca[cws_ca['PWS.ID'] == pwsid]
-            if len(matching_row) > 0:
-                cws_aligned.append(matching_row.iloc[0])
-            else:
-                missing_count += 1
-        
-        if missing_count > 0:
-            print(f"Warning: {missing_count} PWS IDs in distance matrix not found in CWS data")
-        
-        cws_ca_aligned = pd.DataFrame(cws_aligned).reset_index(drop=True)
-        print(f"Successfully aligned {len(cws_ca_aligned)} systems")
-        
-        print("All data loaded and aligned successfully!")
-        return cws_ca_aligned, distance_matrix_km, lookup_df
+        return cws_ca, distance_matrix_km, lookup_df
         
     except FileNotFoundError as e:
         print(f"Error loading data: {e}")
@@ -53,8 +38,46 @@ def find_optimal_k_for_threshold(lookup_df, threshold_km):
     valid_k = lookup_df[lookup_df['max_intra_cluster_distance_km'] <= threshold_km]
     return valid_k['k'].min() if len(valid_k) > 0 else len(lookup_df)
 
+def count_system_characteristics(df):
+    """Count systems with specific characteristics"""
+    if len(df) == 0:
+        return {
+            'health_violation': 0,
+            'monitoring_violation': 0,
+            'decreasing_population': 0,
+            'safer_failing': 0
+        }
+    
+    # Count systems with health violations (any value > 0 means violation)
+    health_violation = 0
+    if 'Health.violation' in df.columns:
+        health_violation = int((df['Health.violation'] > 0).sum())
+    
+    # Count systems with monitoring violations (any value > 0 means violation)
+    monitoring_violation = 0
+    if 'Monitoring.and.reporting.violation' in df.columns:
+        monitoring_violation = int((df['Monitoring.and.reporting.violation'] > 0).sum())
+    
+    # Count systems with decreasing population (negative Population.Change)
+    decreasing_population = 0
+    if 'Population.Change' in df.columns:
+        # Handle NaN values - only count actual negative values
+        decreasing_population = int((df['Population.Change'] < 0).sum())
+    
+    # Count systems with SAFER.STATUS = Failing
+    safer_failing = 0
+    if 'SAFER.STATUS' in df.columns:
+        safer_failing = int((df['SAFER.STATUS'] == 'Failing').sum())
+    
+    return {
+        'health_violation': health_violation,
+        'monitoring_violation': monitoring_violation,
+        'decreasing_population': decreasing_population,
+        'safer_failing': safer_failing
+    }
+
 def analyze_consolidation_at_threshold(cws_data, distance_matrix, lookup_df, threshold_km):
-    """Analyze consolidation for a specific distance threshold"""
+    """Analyze consolidation for a specific distance threshold with detailed characteristics"""
     
     distance_threshold_meters = threshold_km * 1000
     
@@ -125,44 +148,81 @@ def analyze_consolidation_at_threshold(cws_data, distance_matrix, lookup_df, thr
         cws_geographic = pd.concat(consolidation_results, ignore_index=True)
         result = pd.concat([cws_jm, cws_geographic], ignore_index=True)
     else:
-        result = cws_jm
+        result = cws_jm.copy() if len(cws_jm) > 0 else pd.DataFrame()
     
-    # Count each type
-    if 'Consolidation_Type' in result.columns:
+    # Initialize result dictionary
+    result_dict = {'Distance_km': threshold_km}
+    
+    # Count each consolidation type and their characteristics
+    if 'Consolidation_Type' in result.columns and len(result) > 0:
+        # Count total systems in each consolidation type
         counts = result['Consolidation_Type'].value_counts()
-        joint = counts.get('Joint_Merger', 0)
-        balanced = counts.get('Balanced_Merger', 0)
-        direct = counts.get('Direct_Acquisition', 0)
-        none = counts.get('No_Consolidation', 0)
-    else:
-        joint = balanced = direct = 0
-        none = len(result) if len(result) > 0 else len(cws_data)
+        
+        # Joint Merger statistics
+        joint_systems = result[result['Consolidation_Type'] == 'Joint_Merger']
+        joint_chars = count_system_characteristics(joint_systems)
+        result_dict.update({
+            'Joint_Merger_Total': counts.get('Joint_Merger', 0),
+            'Joint_Merger_Health_Violation': joint_chars['health_violation'],
+            'Joint_Merger_Monitoring_Violation': joint_chars['monitoring_violation'],
+            'Joint_Merger_Decreasing_Population': joint_chars['decreasing_population'],
+            'Joint_Merger_SAFER_Failing': joint_chars['safer_failing']
+        })
+        
+        # Balanced Merger statistics
+        balanced_systems = result[result['Consolidation_Type'] == 'Balanced_Merger']
+        balanced_chars = count_system_characteristics(balanced_systems)
+        result_dict.update({
+            'Balanced_Merger_Total': counts.get('Balanced_Merger', 0),
+            'Balanced_Merger_Health_Violation': balanced_chars['health_violation'],
+            'Balanced_Merger_Monitoring_Violation': balanced_chars['monitoring_violation'],
+            'Balanced_Merger_Decreasing_Population': balanced_chars['decreasing_population'],
+            'Balanced_Merger_SAFER_Failing': balanced_chars['safer_failing']
+        })
+        
+        # Direct Acquisition statistics
+        direct_systems = result[result['Consolidation_Type'] == 'Direct_Acquisition']
+        direct_chars = count_system_characteristics(direct_systems)
+        result_dict.update({
+            'Direct_Acquisition_Total': counts.get('Direct_Acquisition', 0),
+            'Direct_Acquisition_Health_Violation': direct_chars['health_violation'],
+            'Direct_Acquisition_Monitoring_Violation': direct_chars['monitoring_violation'],
+            'Direct_Acquisition_Decreasing_Population': direct_chars['decreasing_population'],
+            'Direct_Acquisition_SAFER_Failing': direct_chars['safer_failing']
+        })
+        
+        # No Consolidation statistics
+        no_consol_systems = result[result['Consolidation_Type'] == 'No_Consolidation']
+        no_consol_chars = count_system_characteristics(no_consol_systems)
+        result_dict.update({
+            'No_Consolidation_Total': counts.get('No_Consolidation', 0),
+            'No_Consolidation_Health_Violation': no_consol_chars['health_violation'],
+            'No_Consolidation_Monitoring_Violation': no_consol_chars['monitoring_violation'],
+            'No_Consolidation_Decreasing_Population': no_consol_chars['decreasing_population'],
+            'No_Consolidation_SAFER_Failing': no_consol_chars['safer_failing']
+        })
+        
+        # Overall totals
+        result_dict['Total_Systems'] = len(result)
+        result_dict['Total_Consolidation'] = counts.get('Joint_Merger', 0) + counts.get('Balanced_Merger', 0) + counts.get('Direct_Acquisition', 0)
+        
+        # Overall characteristics across all systems
+        all_chars = count_system_characteristics(result)
+        result_dict.update({
+            'Total_Health_Violation': all_chars['health_violation'],
+            'Total_Monitoring_Violation': all_chars['monitoring_violation'],
+            'Total_Decreasing_Population': all_chars['decreasing_population'],
+            'Total_SAFER_Failing': all_chars['safer_failing']
+        })
     
-    return {
-        'Distance_km': threshold_km,
-        'Joint_Merger': joint,
-        'Balanced_Merger': balanced,
-        'Direct_Acquisition': direct,
-        'No_Consolidation': none,
-        'Total_Consolidation': joint + balanced + direct
-    }
+    return result_dict
 
 def main():
-    """Main function for sensitivity analysis"""
+    """Main function for enhanced sensitivity analysis"""
     
     # Load data with proper alignment
     cws_ca, distance_matrix, lookup_df = load_data()
     if cws_ca is None:
-        return
-    
-    print(f"\nLoaded and aligned data for {len(cws_ca)} water systems")
-    print(f"Distance matrix shape: {distance_matrix.shape}")
-    
-    # Verify perfect alignment
-    if len(cws_ca) == distance_matrix.shape[0] == distance_matrix.shape[1]:
-        print("Perfect alignment verified")
-    else:
-        print("Dimension mismatch detected!")
         return
     
     # Calculate nearest neighbor distances to determine the threshold range
@@ -177,7 +237,7 @@ def main():
     # Determine threshold range based on nearest neighbor distances
     threshold_range = list(range(0, max_meaningful_distance + 1))
     
-    print(f"Running sensitivity analysis from 0 km to {max_meaningful_distance} km...")
+    print(f"Running enhanced sensitivity analysis from 0 km to {max_meaningful_distance} km...")
     print(f"Number of thresholds to test: {len(threshold_range)}")
     
     # Run analysis
@@ -198,9 +258,18 @@ def main():
     # Create results table
     results_df = pd.DataFrame(results)
     
+    # Print all available columns to debug
+    print(f"\nAll columns in results dataframe:")
+    print(results_df.columns.tolist())
+    
     # Save results
     results_df.to_csv('Output Data/Consolidation_Sensitivity_Analysis.csv', index=False)
     print(f"\nResults saved to: Output Data/Consolidation_Sensitivity_Analysis.csv")
+    
+    # Display summary statistics
+    print(f"\nSummary of enhanced analysis:")
+    print(f"Columns in output: {len(results_df.columns)}")
+    print(f"Rows (distance thresholds): {len(results_df)}")
     print(f"Analysis completed successfully!")
     
     return results_df
