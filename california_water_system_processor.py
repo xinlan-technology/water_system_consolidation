@@ -34,19 +34,15 @@ def load_hr2w_data(input_folder):
         hr2w_list['PWS.ID'] = hr2w_list['PWS.ID'].astype(str)
         
         print(f"Loaded {len(hr2w_list)} HR2W records")
-        print(f"SAFER STATUS distribution:")
-        print(hr2w_list['SAFER.STATUS'].value_counts())
         
         return hr2w_list
         
     except FileNotFoundError:
         print(f"Warning: Could not find HR2W file {hr2w_file}")
-        print("HR2W data will be skipped - systems will have null SAFER.STATUS")
         return None
         
     except Exception as e:
         print(f"Error loading HR2W data: {str(e)}")
-        print("HR2W data will be skipped - systems will have null SAFER.STATUS")
         return None
 
 def process_california_water_systems():
@@ -60,6 +56,7 @@ def process_california_water_systems():
     
     # Read data files
     print("Loading data files...")
+
     # Input data files from Input Data folder
     input_folder = "Input Data/"
     
@@ -105,7 +102,6 @@ def process_california_water_systems():
     CWS.columns = ["PWS.ID", "Primary.Source", "Service.Connections.Count"]
     
     print(f"Initial CWS records: {len(CWS)}")
-    print(f"Sample CWS PWS.ID values: {CWS['PWS.ID'].head().tolist()}")
     
     # Standardize water source information
     water_source_mapping = {
@@ -122,19 +118,15 @@ def process_california_water_systems():
     print("Adding location information...")
 
     # Location file has different column naming: pws.id (lowercase with dots)
-    Location.columns = ["PWS.ID", "Longitude", "Latitude"]  # Rename to match our standard
+    Location.columns = ["PWS.ID", "Longitude", "Latitude"]
     
     print(f"Location records: {len(Location)}")
-    print(f"Sample Location PWS.ID values: {Location['PWS.ID'].head().tolist()}")
     
     # Ensure PWS.ID columns have the same data type (convert both to string)
     CWS['PWS.ID'] = CWS['PWS.ID'].astype(str)
     Location['PWS.ID'] = Location['PWS.ID'].astype(str)
     
-    # Check for common IDs before merging
-    common_ids = set(CWS['PWS.ID']) & set(Location['PWS.ID'])
-    print(f"Common PWS.ID count between CWS and Location: {len(common_ids)}")
-    
+    # Merge CWS and Location data
     CWS = CWS.merge(Location, on="PWS.ID", how="inner")
     print(f"After location merge: {len(CWS)} records")
     
@@ -169,11 +161,9 @@ def process_california_water_systems():
     CWS_2016_pop = CWS_2016_pop[CWS_2016_pop['Population.2016'] != 0]
     print(f"After filtering zero population: {len(CWS_2016_pop)} records")
     
-    # Combine population data
-    print(f"CWS_2021_pop records: {len(CWS_2021_pop)}")
-    common_pop_ids = set(CWS_2016_pop['PWS.ID']) & set(CWS_2021_pop['PWS.ID'])
-    print(f"Common PWS.ID count between 2016 and 2021 population data: {len(common_pop_ids)}")
-    
+    # Combine population data (2016 and 2021)
+    print(f"Population data in 2016 before merge: {len(CWS_2016_pop)} records")
+    print(f"Population data in 2021 before merge: {len(CWS_2021_pop)} records")
     Pop = CWS_2016_pop.merge(CWS_2021_pop, on="PWS.ID", how="inner")
     print(f"Population data after merge: {len(Pop)} records")
     
@@ -190,9 +180,6 @@ def process_california_water_systems():
     
     # Add population information to CWS data
     print(f"CWS records before population merge: {len(CWS)}")
-    common_cws_pop_ids = set(CWS['PWS.ID']) & set(Pop['PWS.ID'])
-    print(f"Common PWS.ID count between CWS and Population data: {len(common_cws_pop_ids)}")
-    
     CWS = CWS.merge(Pop, on="PWS.ID", how="inner")
     print(f"After population merge: {len(CWS)} records")
     
@@ -268,8 +255,6 @@ def process_california_water_systems():
             CWS['SAFER.STATUS'] = CWS['SAFER.STATUS'].fillna('Not Assessed')
             print(f"Replaced {na_count_after_merge} missing SAFER.STATUS values with 'Not Assessed'")
 
-        print("HR2W status distribution in final dataset:")
-        print(CWS['SAFER.STATUS'].value_counts(dropna=False))
     else:
         # If HR2W data couldn't be loaded, add empty column
         CWS['SAFER.STATUS'] = pd.NA
@@ -287,19 +272,8 @@ if __name__ == "__main__":
         processed_data = process_california_water_systems()
         print("Data processing completed successfully!")
         print(f"Processed dataset contains {len(processed_data)} water system records")
-        print(f"Dataset includes the following columns: {list(processed_data.columns)}")
-        print("\nSample of processed data:")
-        print(processed_data.head())
-        
-        # Show HR2W integration summary
-        if 'SAFER.STATUS' in processed_data.columns:
-            print(f"\nHR2W Integration Summary:")
-            print(f"Total systems: {len(processed_data)}")
-            print(f"Systems with HR2W status: {len(processed_data[processed_data['SAFER.STATUS'].notna()])}")
-            print(f"Systems without HR2W status: {len(processed_data[processed_data['SAFER.STATUS'].isna()])}")
         
     except FileNotFoundError as e:
         print(f"Error: Required data file not found - {str(e)}")
-        print("Please ensure all input CSV files are in the working directory.")
     except Exception as e:
         print(f"Error processing data: {str(e)}")
