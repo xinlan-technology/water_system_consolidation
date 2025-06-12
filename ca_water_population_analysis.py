@@ -166,7 +166,8 @@ def plot_california_base(ax, ca_state, ca_counties):
     
     # Plot county boundaries with black lines
     ca_counties.boundary.plot(ax=ax, linewidth=1.0, edgecolor='black', alpha=0.8)
-    print("Using real California boundaries with county lines")
+
+    print("Using California boundaries with county lines")
 
 def create_population_variation_map(data, save_path=None):
     """
@@ -197,6 +198,7 @@ def create_population_variation_map(data, save_path=None):
     for variation in plot_order:
         subset = data[data['Population.Variation'] == variation]
         if len(subset) > 0:
+
             # Add small random jitter to avoid overlapping points
             jitter_x = np.random.normal(0, 0.01, len(subset))
             jitter_y = np.random.normal(0, 0.01, len(subset))
@@ -265,7 +267,6 @@ def main():
         
     except FileNotFoundError:
         print("Error: Could not find CWS_CA.csv file.")
-        print("Please make sure the file exists in 'Output Data/CWS_CA.csv'")
         return None
     
     except Exception as e:
