@@ -82,7 +82,8 @@ def plot_california_base(ax, ca_state, ca_counties):
     
     # Plot county boundaries with black lines
     ca_counties.boundary.plot(ax=ax, linewidth=1.0, edgecolor='black', alpha=0.8)
-    print("Using real California boundaries with county lines")
+
+    print("Using California boundaries with county lines")
 
 def create_county_population_pie_chart(data, save_path=None):
     """
@@ -123,6 +124,7 @@ def create_county_population_pie_chart(data, save_path=None):
         legend = ax.legend(legend_handles, legend_labels, loc='lower center', 
                           bbox_to_anchor=(0.5, 0.10), frameon=False, 
                           fontsize=13, ncol=2, columnspacing=3.0)
+        
         # Make legend text bold
         for text in legend.get_texts():
             text.set_fontweight('bold')
@@ -179,7 +181,7 @@ def create_county_population_map(county_data, save_path=None):
         ca_counties_merged.plot(ax=ax, column='averagepercent', cmap='RdYlBu_r', 
                                norm=norm, alpha=0.7, edgecolor='black', linewidth=0.5,
                                missing_kwds={'color': 'lightgray'})
-        
+                
         # Add text annotations for each county showing the percentage
         for idx, row in valid_data.iterrows():
             # Get county centroid for text placement
@@ -187,8 +189,8 @@ def create_county_population_map(county_data, save_path=None):
             # Format percentage
             pct_text = f"{row['averagepercent']*100:.1f}%"
             ax.annotate(pct_text, xy=(centroid.x, centroid.y), 
-                       ha='center', va='center', fontsize=6, fontweight='bold',
-                       bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.8))
+                       ha='center', va='center', fontsize=10, fontweight='bold',
+                       bbox=dict(boxstyle='round,pad=0.1', facecolor='white', alpha=0.8))
     
     # Set boundaries
     ax.set_xlim(-124.8, -113.5)  
@@ -230,10 +232,6 @@ def main():
         print(f"\nData processing completed. Dataset contains {len(data)} county records.")
         print("\nGenerating County Population Analysis Visualizations...")
         
-        # Print summary statistics
-        print("\nCounty Population Variation Summary:")
-        print(data['Population.Variation'].value_counts())
-        
         # Create both visualizations
         pie_fig = create_county_population_pie_chart(data, 'Output Figure/county_population_pie_chart.png')
         map_fig = create_county_population_map(data, 'Output Figure/county_population_map.png')
@@ -247,7 +245,6 @@ def main():
         
     except FileNotFoundError:
         print("Error: Could not find hauer_county_totpop_SSPs.csv file.")
-        print("Please make sure the file exists in 'Input Data/hauer_county_totpop_SSPs.csv'")
         return None
     
     except Exception as e:
