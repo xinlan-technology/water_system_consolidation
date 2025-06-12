@@ -1,6 +1,5 @@
 # California Water System Violation and HR2W Risk Assessment Maps Script
 # Creates maps showing water quality violations and HR2W risk status 
-# across California's community water systems
 
 import pandas as pd
 import numpy as np
@@ -77,7 +76,8 @@ def plot_california_base(ax, ca_state, ca_counties):
 
     # Plot county boundaries with black lines
     ca_counties.boundary.plot(ax=ax, linewidth=1.0, edgecolor='black', alpha=0.8)
-    print("Using real California boundaries with county lines")
+
+    print("Using California boundaries with county lines")
 
 def create_violations_map(data, save_path=None):
     """
@@ -97,10 +97,10 @@ def create_violations_map(data, save_path=None):
     
     # Violation colors and settings
     violation_config = {
-        "No violation": {"color": "#22C55E", "size": 12, "alpha": 0.5, "edge": "#15803D"},                            # 绿
-        "Monitoring & reporting": {"color": "#FACC15", "size": 24, "alpha": 0.8, "edge": "#CA8A04"},       # 黄
-        "Health-based": {"color": "#3B82F6", "size": 24, "alpha": 0.8, "edge": "#1D4ED8"},                 # 蓝
-        "Both violations": {"color": "#EF4444", "size": 30, "alpha": 0.9, "edge": "#991B1B"}                         # 红
+        "No violation": {"color": "#22C55E", "size": 12, "alpha": 0.5, "edge": "#15803D"},                           
+        "Monitoring & reporting": {"color": "#FACC15", "size": 24, "alpha": 0.8, "edge": "#CA8A04"},       
+        "Health-based": {"color": "#3B82F6", "size": 24, "alpha": 0.8, "edge": "#1D4ED8"},                 
+        "Both violations": {"color": "#EF4444", "size": 30, "alpha": 0.9, "edge": "#991B1B"}                         
     }
     
     # Plot points in order (no violation first, so they're in background)
@@ -149,10 +149,6 @@ def create_hr2w_map(data, save_path=None):
     # Filter data with HR2W status
     data_with_hr2w = data[data['SAFER.STATUS'].notna()]
     
-    if len(data_with_hr2w) == 0:
-        print("No HR2W data available for mapping")
-        return None
-    
     # Load California boundaries
     ca_state, ca_counties = load_california_boundaries()
     
@@ -165,15 +161,24 @@ def create_hr2w_map(data, save_path=None):
     
     # HR2W colors and settings
     hr2w_config = {
-        "Not At-Risk": {"color": "#22C55E", "size": 12, "alpha": 0.8, "edge": "#15803D"},         # 绿：良好
-        "Potentially At-Risk": {"color": "#3B82F6", "size": 24, "alpha": 0.85, "edge": "#1D4ED8"}, # 蓝：可关注
-        "At-Risk": {"color": "#FACC15", "size": 24, "alpha": 0.85, "edge": "#CA8A04"},            # 黄：中高风险
-        "Failing": {"color": "#EF4444", "size": 30, "alpha": 0.9, "edge": "#991B1B"},              # 红：严重
-        "Not Assessed": {"color": "#A855F7", "size": 12, "alpha": 0.6, "edge": "#7E22CE"}          # 紫：信息缺
+        "Not At-Risk": {"color": "#22C55E", "size": 12, "alpha": 0.8, "edge": "#15803D"},         
+        "Potentially At-Risk": {"color": "#3B82F6", "size": 24, "alpha": 0.85, "edge": "#1D4ED8"}, 
+        "At-Risk": {"color": "#FACC15", "size": 24, "alpha": 0.85, "edge": "#CA8A04"},            
+        "Failing": {"color": "#EF4444", "size": 30, "alpha": 0.9, "edge": "#991B1B"},              
+        "Not Assessed": {"color": "#A855F7", "size": 12, "alpha": 0.6, "edge": "#7E22CE"}          
     }
     
     # Plot points in order
     plot_order = ["Not Assessed", "Not At-Risk", "Potentially At-Risk", "At-Risk", "Failing"]
+
+    # Format legend labels
+    legend_labels = {
+        "Not At-Risk": "Not at-risk",
+        "Potentially At-Risk": "Potentially at-risk",
+        "At-Risk": "At-risk",
+        "Failing": "Failing",
+        "Not Assessed": "Not assessed"
+    }
     
     for status in plot_order:
         subset = data_with_hr2w[data_with_hr2w['SAFER.STATUS'] == status]
@@ -181,7 +186,7 @@ def create_hr2w_map(data, save_path=None):
             config = hr2w_config[status]
             ax.scatter(subset['Longitude'], subset['Latitude'],
                       c=config["color"], s=config["size"], alpha=config["alpha"],
-                      label=status, edgecolors=config["edge"],
+                      edgecolors=config["edge"],
                       linewidth=0.8, zorder=5)
     
     # Set boundaries
@@ -194,9 +199,25 @@ def create_hr2w_map(data, save_path=None):
     ax.margins(0)
     ax.margins(0)
     
-    # Add legend to the upper right corner
-    legend = ax.legend(loc='upper right', bbox_to_anchor=(0.98, 0.92), 
-                      frameon=False, fontsize=14, markerscale=1.3, ncol=1)
+    # Create custom proxy legend handles
+    from matplotlib.lines import Line2D
+    handles = []
+    for status in plot_order:
+        config = hr2w_config[status]
+        label = legend_labels[status]
+        handle = Line2D([0], [0],
+                        marker='o', color='w',
+                        markerfacecolor=config["color"],
+                        markeredgecolor=config["edge"],
+                        markersize=np.sqrt(config["size"]),
+                        alpha=config["alpha"],
+                        markeredgewidth=0.8,
+                        label=label)
+        handles.append(handle)
+
+    # Add legend
+    legend = ax.legend(handles=handles, loc='upper right', bbox_to_anchor=(0.98, 0.92),
+                       frameon=False, fontsize=14, markerscale=1.3, ncol=1)
     
     # Make legend text bold
     for text in legend.get_texts():
@@ -235,7 +256,6 @@ def main():
         
     except FileNotFoundError:
         print("Error: Could not find CWS_CA.csv file.")
-        print("Please make sure the file exists in 'Output Data/CWS_CA.csv'")
         return None
     
     except Exception as e:
