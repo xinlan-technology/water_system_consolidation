@@ -1,6 +1,5 @@
 # California Water System Violation Analysis Script
 # Generates comprehensive statistics on drinking water violations by system size
-# Needs to read one file: CWS_CA.csv
 
 import pandas as pd
 import numpy as np
@@ -194,10 +193,9 @@ def generate_summary_table(df):
 def analyze_water_system_violations(input_file='Output Data/CWS_CA.csv'):
     """
     Analyze water system violations and display summary table
-    Now simplified to only read one input file that contains all integrated data
     
     Args:
-        input_file (str): Path to the processed water system data (with HR2W already integrated)
+        input_file (str): Path to the processed water system data
         
     Returns:
         pandas.DataFrame: Summary table for display
@@ -209,24 +207,6 @@ def analyze_water_system_violations(input_file='Output Data/CWS_CA.csv'):
         # Read the processed CWS data
         df = pd.read_csv(input_file)
         print(f"Loaded {len(df)} water system records")
-        
-        # Check what data is available
-        print("\nDataset summary:")
-        print(f"Columns available: {list(df.columns)}")
-        
-        # Check HR2W data availability
-        if 'SAFER.STATUS' in df.columns:
-            hr2w_available = df['SAFER.STATUS'].notna().sum()
-            print(f"HR2W data: {hr2w_available} systems with SAFER status out of {len(df)} total")
-            if hr2w_available > 0:
-                print("SAFER STATUS distribution:")
-                print(df['SAFER.STATUS'].value_counts(dropna=False))
-        else:
-            print("No HR2W data found in dataset")
-        
-        # Generate comprehensive analysis
-        print("\nCalculating violation statistics...")
-        detailed_stats = calculate_violation_statistics(df)
         
         # Create formatted summary table
         print("Generating summary table...")
@@ -243,7 +223,6 @@ def analyze_water_system_violations(input_file='Output Data/CWS_CA.csv'):
         
     except FileNotFoundError:
         print(f"Error: Could not find input file {input_file}")
-        print("Please make sure to run the data processing script first to generate CWS_CA.csv")
         return None
     
     except Exception as e:
@@ -255,7 +234,6 @@ def analyze_water_system_violations(input_file='Output Data/CWS_CA.csv'):
 if __name__ == "__main__":
     # Run the simplified analysis
     print("Starting California Water System Violation Analysis...")
-    print("This script now only reads one file: CWS_CA.csv (with integrated HR2W data)")
     print("-" * 70)
     
     summary_table = analyze_water_system_violations()
