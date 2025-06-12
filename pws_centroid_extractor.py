@@ -117,6 +117,5 @@ if __name__ == "__main__":
         
     except FileNotFoundError:
         print(f"Error: Shapefile not found at {shapefile_path}")
-        print("Please check the file path and try again.")
     except Exception as e:
         print(f"Error processing data: {str(e)}")
