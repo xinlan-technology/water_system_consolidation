@@ -110,7 +110,7 @@ def create_clustering_lookup_table(cws_data, distance_matrix):
 def main():
     """Main function to create clustering lookup table"""
     
-    # Load data with proper alignment
+    # Load data
     cws_data, distance_matrix, pwsids = load_data()
     if cws_data is None:
         return
