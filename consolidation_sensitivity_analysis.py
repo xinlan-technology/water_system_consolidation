@@ -61,7 +61,6 @@ def count_system_characteristics(df):
     # Count systems with decreasing population (negative Population.Change)
     decreasing_population = 0
     if 'Population.Change' in df.columns:
-        # Handle NaN values - only count actual negative values
         decreasing_population = int((df['Population.Change'] < 0).sum())
     
     # Count systems with SAFER.STATUS = Failing
@@ -220,7 +219,7 @@ def analyze_consolidation_at_threshold(cws_data, distance_matrix, lookup_df, thr
 def main():
     """Main function for enhanced sensitivity analysis"""
     
-    # Load data with proper alignment
+    # Load data
     cws_ca, distance_matrix, lookup_df = load_data()
     if cws_ca is None:
         return
