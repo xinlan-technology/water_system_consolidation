@@ -1,4 +1,4 @@
-# Explore the Consolidation Potential for Community Water Systems in California
+# Explore the Consolidation Potential for Water Systems in California
 
 This repository provides a comprehensive suite of Python scripts for analyzing and visualizing water system consolidation opportunities across California. The project integrates geospatial data, demographic attributes, and regulatory violations to evaluate physical and managerial consolidation potential through clustering algorithms.
 
