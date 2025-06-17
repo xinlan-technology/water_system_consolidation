@@ -151,7 +151,7 @@ def get_consolidation_type_with_clusters(cws_data, distance_matrix, lookup_df, t
 def main():
     """Main function"""
     
-    # Load data with proper alignment
+    # Load data
     cws_ca, distance_matrix, lookup_df = load_data()
     if cws_ca is None:
         return
