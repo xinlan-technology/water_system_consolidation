@@ -1,4 +1,4 @@
-# Water System Consolidation Analysis Generator
+# Water System Consolidation Analysis Tables Generator
 # Generates consolidation analysis tables based on case study results
 
 import pandas as pd
