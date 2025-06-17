@@ -57,7 +57,7 @@ def plot_california_base(ax, ca_state, ca_counties):
 
     # Plot county boundaries with black lines
     ca_counties.boundary.plot(ax=ax, linewidth=1.0, edgecolor='black', alpha=0.8)
-    print("Using real California boundaries with county lines")
+    print("Using California boundaries with county lines")
 
 def create_population_analysis(data, save_path=None):
     """
@@ -195,10 +195,10 @@ def create_consolidation_map(data, consolidation_column, map_title, save_path=No
     
     # Consolidation type colors and settings
     consolidation_config = {
-        "No_Consolidation": {"color": "#A3A3A3", "size": 12, "alpha": 0.6, "edge": "#525252"},        # 灰色：无合并
-        "Direct_Acquisition": {"color": "#3B82F6", "size": 24, "alpha": 0.8, "edge": "#1D4ED8"},     # 蓝色：直接收购
-        "Balanced_Merger": {"color": "#22C55E", "size": 24, "alpha": 0.8, "edge": "#15803D"},        # 绿色：平衡合并
-        "Joint_Merger": {"color": "#EF4444", "size": 30, "alpha": 0.9, "edge": "#991B1B"}            # 红色：联合合并
+        "No_Consolidation": {"color": "#A3A3A3", "size": 12, "alpha": 0.6, "edge": "#525252"},        
+        "Direct_Acquisition": {"color": "#3B82F6", "size": 24, "alpha": 0.8, "edge": "#1D4ED8"},     
+        "Balanced_Merger": {"color": "#22C55E", "size": 24, "alpha": 0.8, "edge": "#15803D"},        
+        "Joint_Merger": {"color": "#EF4444", "size": 30, "alpha": 0.9, "edge": "#991B1B"}            
     }
     
     # Plot points in order (no consolidation first, so they're in background)
@@ -280,8 +280,6 @@ def main():
         
     except FileNotFoundError:
         print("Error: Could not find CWS_CA_Case_Study_Results.csv file.")
-        print("Please make sure the file exists in 'Output Data/CWS_CA_Case_Study_Results.csv'")
-        print("Run the case study analysis script first to generate this file.")
         return None
     
     except Exception as e:
@@ -296,6 +294,11 @@ if __name__ == "__main__":
     print("This script creates two consolidation analysis maps:")
     print("A. Physical Consolidation (1 mile threshold)")
     print("B. Managerial Consolidation (10 km threshold)")
+    print("=" * 60)
+
+    print("California Water Systems Population Distribution Analysis Before and After Consolidation")
+    print("=" * 60)
+    print("This script creates a population distribution analysis comparing before and after consolidation")
     print("=" * 60)
     
     # Run the main function
