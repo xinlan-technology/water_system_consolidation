@@ -59,10 +59,9 @@ def water_systems_nearest_neighbor_analysis():
     return nearest_distances_km, nearest_distances_miles
 
 def create_consolidation_plot(df, plot_type, title, filename):
-    """Create a single consolidation plot with colorblind-friendly colors and legend"""
+    """Create a single consolidation plot"""
     
-    # Colorblind-friendly color palette
-    # Using Paul Tol's colorblind-friendly palette
+    # Color palette
     colors = {
         'joint': '#0173B2',      # Blue
         'balanced': '#DE8F05',   # Orange  
@@ -162,7 +161,7 @@ def create_all_consolidation_plots():
         print("\nLoading consolidation sensitivity analysis results...")
         df = pd.read_csv('Output Data/Consolidation_Sensitivity_Analysis.csv')
         
-        # Plot configurations (simplified - no more label positioning needed)
+        # Plot configurations
         plot_configs = [
             {
                 'type': 'total',
@@ -196,13 +195,12 @@ def create_all_consolidation_plots():
             create_consolidation_plot(df, config['type'], config['title'], config['filename'])
         
         print(f"\nGenerated 5 consolidation analysis plots successfully!")
-        print("All plots use colorblind-friendly colors and legends for easy reading.")
         
     except FileNotFoundError:
         print("Consolidation sensitivity analysis results not found.")
-        print("Please run the enhanced sensitivity analysis script first.")
 
 if __name__ == "__main__":
+    
     # Calculate nearest neighbor distances
     results = water_systems_nearest_neighbor_analysis()
         
