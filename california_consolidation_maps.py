@@ -123,9 +123,9 @@ def create_population_analysis(data, save_path=None):
     # Create the bar plot
     fig, ax = plt.subplots(1, 1, figsize=(12, 8))
     
-    # Color scheme matching the R code
+    # Color scheme
     colors = ['#756bb1', '#bcbddc', '#2ca25f']
-    labels = ['Before consolidation', 'Physical consolidation', 'Managerial consolidation']
+    labels = ['Before consolidation', 'Physical consolidation (1 mile threshold)', 'Managerial consolidation (10 km threshold)']
     
     # Set up the bar positions
     x = np.arange(len(categories))
