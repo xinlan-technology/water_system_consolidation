@@ -153,6 +153,13 @@ def main():
     
     # Generate Small CWS Consolidation Analysis  
     generate_small_cws_consolidation_analysis(df)
+
+    # Add consolidation summary statistics
+    total_systems = len(df)
+    physical_eligible = len(df[df['Physical_Consolidation_Type'].isin(['Direct_Acquisition', 'Joint_Merger', 'Balanced_Merger'])])
+    managerial_eligible = len(df[df['Managerial_Consolidation_Type'].isin(['Direct_Acquisition', 'Joint_Merger', 'Balanced_Merger'])])
+    print(f"\nTotal systems eligible for physical consolidation: {physical_eligible:,} ({physical_eligible/total_systems:.1%})")
+    print(f"Total systems eligible for managerial consolidation: {managerial_eligible:,} ({managerial_eligible/total_systems:.1%})")
     
     print("\n" + "="*85)
     print("CONSOLIDATION ANALYSIS COMPLETED")
