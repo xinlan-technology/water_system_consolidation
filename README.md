@@ -86,7 +86,7 @@ python precompute_clustering_table.py
 # 10. Run sensitivity analysis
 python consolidation_sensitivity_analysis.py
 
-# 11. Analyze distance thresholds vs consolidation potential
+# 11. Plot distance thresholds vs consolidation potential
 python consolidation_distance_analysis.py
 
 # 12. Provide the case studies using 10 km and 1 mile thresholds
