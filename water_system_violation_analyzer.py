@@ -211,6 +211,9 @@ def analyze_water_system_violations(input_file='Output Data/CWS_CA.csv'):
         # Create formatted summary table
         print("Generating summary table...")
         summary_table = generate_summary_table(df)
+
+        # Print total health-based violations
+        print(f"\nTotal health-based violations (2017-2021): {df['Health.violation'].sum():,}")
         
         # Display summary
         print("\n" + "="*70)
