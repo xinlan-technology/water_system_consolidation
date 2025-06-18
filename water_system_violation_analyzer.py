@@ -212,8 +212,19 @@ def analyze_water_system_violations(input_file='Output Data/CWS_CA.csv'):
         print("Generating summary table...")
         summary_table = generate_summary_table(df)
 
-        # Print total health-based violations
+        # Print total violations and population served by systems with violations
         print(f"\nTotal health-based violations (2017-2021): {df['Health.violation'].sum():,}")
+        print(f"Total monitoring violations (2017-2021): {df['Monitoring.and.reporting.violation'].sum():,}")
+        
+        # Calculate population served by systems with violations
+        health_violation_systems = df[df['Health.violation'] > 0]
+        monitoring_violation_systems = df[df['Monitoring.and.reporting.violation'] > 0]
+        
+        health_violation_population = health_violation_systems['Population.2021'].sum()
+        monitoring_violation_population = monitoring_violation_systems['Population.2021'].sum()
+        
+        print(f"\nPopulation served by systems with health-based violations: {health_violation_population:,}")
+        print(f"Population served by systems with monitoring violations: {monitoring_violation_population:,}")
         
         # Display summary
         print("\n" + "="*70)
