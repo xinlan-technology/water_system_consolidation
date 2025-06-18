@@ -174,6 +174,21 @@ def create_population_analysis(data, save_path=None):
     print(f"Before consolidation: {len(before_data)} water systems")
     print(f"After physical consolidation: {len(physical_clusters)} clusters")
     print(f"After managerial consolidation: {len(managerial_clusters)} clusters")
+
+    # Add analysis for very small systems (≤500 people)
+    print(f"\nSmall Systems Analysis (≤500 people):")
+    small_before = before_counts.get("0-500", 0)
+    small_physical = physical_counts.get("0-500", 0) 
+    small_managerial = managerial_counts.get("0-500", 0)
+    
+    physical_reduction = ((small_before - small_physical) / small_before * 100) if small_before > 0 else 0
+    managerial_reduction = ((small_before - small_managerial) / small_before * 100) if small_before > 0 else 0
+    
+    print(f"Very small systems (≤500 people) before consolidation: {small_before}")
+    print(f"After physical consolidation: {small_physical} (reduction: {physical_reduction:.0f}%)")
+    print(f"After managerial consolidation: {small_managerial} (reduction: {managerial_reduction:.0f}%)")
+    print(f"The additional managerial consolidations primarily involve very small systems,")
+    print(f"potentially reducing their numbers by {managerial_reduction:.0f}% versus {physical_reduction:.0f}% through physical mergers.")
     
     return fig
 
