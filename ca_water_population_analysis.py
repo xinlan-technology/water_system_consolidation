@@ -253,6 +253,21 @@ def main():
         print(data['Population.Variation'].value_counts())
         print("\nWater System Size Summary:")
         print(data['Size'].value_counts())
+
+        # Calculate and print declining population statistics
+        declining_systems = len(data[data['Population.Variation'] == 'Population decrease'])
+
+        # Calculate large declining systems statistics (>10,000 people)
+        declining_systems_data = data[data['Population.Variation'] == 'Population decrease']
+        large_declining_systems = len(declining_systems_data[declining_systems_data['Population.2021'] > 10000])
+
+        # Calculate percentage of declining systems serving >10,000 people
+        large_declining_percentage = (large_declining_systems / declining_systems) * 100 if declining_systems > 0 else 0
+        
+        print(f"\n--- Large Declining Systems Analysis ---")
+        print(f"Declining systems serving >10,000 people: {large_declining_systems}")
+        print(f"Total declining systems: {declining_systems}")
+        print(f"Percentage of declining systems serving >10,000 people: {large_declining_percentage:.1f}%")
         
         # Create both visualizations
         bar_fig = create_population_variation_bar_chart(data, 'Output Figure/population_variation_bar_chart.png')
