@@ -154,12 +154,34 @@ def main():
     # Generate Small CWS Consolidation Analysis  
     generate_small_cws_consolidation_analysis(df)
 
-    # Add consolidation summary statistics
+    # Print key consolidation results
+    print(f"\n" + "="*85)
+    print("KEY CONSOLIDATION RESULTS")
+    print("="*85)
+
+    # Calculate the total number of systems eligible for consolidation
     total_systems = len(df)
     physical_eligible = len(df[df['Physical_Consolidation_Type'].isin(['Direct_Acquisition', 'Joint_Merger', 'Balanced_Merger'])])
     managerial_eligible = len(df[df['Managerial_Consolidation_Type'].isin(['Direct_Acquisition', 'Joint_Merger', 'Balanced_Merger'])])
-    print(f"\nTotal systems eligible for physical consolidation: {physical_eligible:,} ({physical_eligible/total_systems:.1%})")
-    print(f"Total systems eligible for managerial consolidation: {managerial_eligible:,} ({managerial_eligible/total_systems:.1%})")
+    
+    # Current total CWS
+    print(f"Total California CWS: {total_systems:,}")
+    
+    # Physical consolidation results
+    physical_percentage = physical_eligible / total_systems * 100
+    # Each unique cluster becomes 1 system (including individual systems)
+    remaining_after_physical = df['Physical_Cluster_Number'].nunique()
+    
+    print(f"Physical consolidation: {physical_percentage:.1f}% ({physical_eligible:,} systems)")
+    print(f"Remaining CWS after physical consolidation: {remaining_after_physical:,}")
+    
+    # Managerial consolidation results  
+    managerial_percentage = managerial_eligible / total_systems * 100
+    # Each unique cluster becomes 1 system (including individual systems)
+    remaining_after_managerial = df['Managerial_Cluster_Number'].nunique()
+    
+    print(f"Managerial consolidation: {managerial_percentage:.1f}% ({managerial_eligible:,} systems)")
+    print(f"Remaining CWS after managerial consolidation: {remaining_after_managerial:,}")
     
     print("\n" + "="*85)
     print("CONSOLIDATION ANALYSIS COMPLETED")
